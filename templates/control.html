@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Control | Drama Mask Performance{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='control.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+  <main class="control-shell" data-current-status="{{ status }}">
+    <section class="control-panel">
+      <p class="eyebrow">Performance control</p>
+      <h1>State <span id="status-value">{{ status }}</span></h1>
+      <p class="description">Back and forward cycle the shared display state. Spacebar advances forward.</p>
+
+      <div class="button-row">
+        <form method="post" action="{{ url_for('control_prev') }}">
+          <button type="submit" class="control-button secondary">Back</button>
+        </form>
+
+        <form method="post" action="{{ url_for('control_next') }}" id="forward-form">
+          <button type="submit" class="control-button primary">Forward / Space</button>
+        </form>
+      </div>
+    </section>
+  </main>
+{% endblock %}

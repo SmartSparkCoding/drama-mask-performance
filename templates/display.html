@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Display | Drama Mask Performance{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='display.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+  <main class="display-stage" data-current-status="{{ status }}">
+    <img
+      id="display-image"
+      class="display-image"
+      src="{{ url_for('static', filename='images/' + image) }}"
+      alt="Current performance state"
+    >
+  </main>
+{% endblock %}

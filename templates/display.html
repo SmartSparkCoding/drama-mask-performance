@@ -11,7 +11,7 @@
     <img
       id="display-image"
       class="display-image"
-      src="{{ url_for('static', filename='images/' + image) }}"
+      {% if image %}src="{{ url_for('static', filename='images/' + image) }}"{% else %}src=""{% endif %}
       alt="Current performance state"
     >
   </main>

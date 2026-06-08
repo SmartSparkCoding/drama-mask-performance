@@ -44,6 +44,10 @@ body {
   animation: breathe 4s ease-in-out infinite;
 }
 
+.display-image.is-hidden {
+  opacity: 0;
+}
+
 .control-shell {
   min-height: 100vh;
   display: grid;

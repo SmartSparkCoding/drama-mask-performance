@@ -6,7 +6,7 @@ function triggerForward() {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.code === 'Space' && !event.repeat) {
+  if (event.key && event.key.toLowerCase() === 'b' && !event.repeat) {
     event.preventDefault();
     triggerForward();
   }

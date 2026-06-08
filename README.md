@@ -1,11 +1,14 @@
 # drama-mask-performance
 
-This project is a small Flask app for a performance display. The root route `/` shows the stage screen, and `/control` changes what the display shows by updating a SQLite database.
+This project is a small Flask app for a performance display. The root route `/` shows the stage screen, and `/control` changes what the display shows by updating a SQLite database and coordinating audio playback.
 
 ## What It Does
 
-- `/` shows `static/images/wait.png` when the status is `1` or `3`.
-- `/` shows `static/images/time.png` when the status is `2`.
+- Status `0` shows no image and no audio.
+- Status `1` shows no image and fades in `static/audio/kill.mp3` over 3 seconds.
+- Status `2` shows `static/images/time.png`, fades out `kill.mp3`, and fades in `static/audio/will.mp3`.
+- Status `3` shows `static/images/wait.png` and keeps `will.mp3` playing.
+- Status `4` shows `static/images/wait.png`, keeps `will.mp3` in the background, and plays `static/audio/doorbell.mp3` on top at 150% volume.
 - `/control` provides Back and Forward buttons.
 - Pressing the space bar on `/control` triggers Forward.
 - The app creates its SQLite database automatically when you start it with `python3 app.py`.
@@ -33,7 +36,7 @@ Start the app with:
 python3 app.py
 ```
 
-On startup, the app creates `data/performance.db` if it does not already exist and seeds the status to `1`.
+On startup, the app creates `data/performance.db` if it does not already exist and seeds the status to `0`.
 
 Open these pages in your browser:
 
@@ -44,10 +47,17 @@ Open these pages in your browser:
 
 - `app.py` contains the Flask app and SQLite state handling.
 - `static/images/wait.png` and `static/images/time.png` are the display assets.
+- `static/audio/` should contain `kill.mp3`, `will.mp3`, and `doorbell.mp3`.
 - `templates/` contains the HTML for the two routes.
 - `static/display.js` keeps the main screen in sync with the database.
 - `static/control.js` maps the space bar to the Forward action.
 
-## Audio Later
+## Audio Files
 
-Audio is not wired yet, but the app structure is ready for it. The natural next step is to add audio playback hooks alongside the state changes and fade the sound between scenes.
+Place these files in `static/audio/`:
+
+- `kill.mp3`
+- `will.mp3`
+- `doorbell.mp3`
+
+The browser client will fade and layer them according to the active status.

@@ -1,9 +1,9 @@
 const FADE_MS = 3000;
 const POLL_MS = 250;
 const TRACK_VOLUME = 1;
-const DUCKED_VOLUME = 0.5;
-const DOORBELL_VOLUME = 1.5;
-const DOORBELL_DUCK_MS = 10000;
+const DUCKED_VOLUME = 0.25;
+const DOORBELL_VOLUME = 1;
+const DOORBELL_DUCK_MS = 6000;
 
 const STATE_TO_IMAGE = {
   0: null,

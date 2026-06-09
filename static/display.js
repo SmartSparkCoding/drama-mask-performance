@@ -96,7 +96,7 @@ async function ensureAudioUnlocked() {
 
 async function fadeAudio(audio, targetVolume, durationMs) {
   const startVolume = audio.volume;
-  const destination = Math.max(0, targetVolume);
+  const destination = Math.min(1, Math.max(0, targetVolume));
 
   if (durationMs <= 0) {
     audio.volume = destination;

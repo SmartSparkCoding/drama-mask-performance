@@ -1,7 +1,9 @@
 const FADE_MS = 3000;
 const POLL_MS = 250;
 const TRACK_VOLUME = 1;
+const DUCKED_VOLUME = 0.5;
 const DOORBELL_VOLUME = 1.5;
+const DOORBELL_DUCK_MS = 10000;
 
 const STATE_TO_IMAGE = {
   0: null,
@@ -26,6 +28,14 @@ const audioFiles = {
 let lastState = null;
 let audioUnlocked = false;
 let pendingState = 0;
+let doorbellRecoveryTimer = null;
+
+function clearDoorbellRecoveryTimer() {
+  if (doorbellRecoveryTimer) {
+    clearTimeout(doorbellRecoveryTimer);
+    doorbellRecoveryTimer = null;
+  }
+}
 
 function createAudio(url, loop) {
   const audio = new Audio(url);
@@ -175,6 +185,7 @@ async function applyState(state, force = false) {
   }
 
   if (state === 0) {
+    clearDoorbellRecoveryTimer();
     await Promise.all([
       stopAudio(audioFiles.kill, 150),
       stopAudio(audioFiles.will, 150),
@@ -185,6 +196,7 @@ async function applyState(state, force = false) {
   }
 
   if (state === 1) {
+    clearDoorbellRecoveryTimer();
     await Promise.all([
       stopAudio(audioFiles.will, 50),
       stopAudio(audioFiles.doorbell, 50),
@@ -195,6 +207,7 @@ async function applyState(state, force = false) {
   }
 
   if (state === 2) {
+    clearDoorbellRecoveryTimer();
     await Promise.all([
       stopAudio(audioFiles.kill, FADE_MS),
       startAudio(audioFiles.will, TRACK_VOLUME, FADE_MS, true),
@@ -205,6 +218,7 @@ async function applyState(state, force = false) {
   }
 
   if (state === 3) {
+    clearDoorbellRecoveryTimer();
     await Promise.all([
       stopAudio(audioFiles.kill, 100),
       startAudio(audioFiles.will, TRACK_VOLUME, 0, false),
@@ -216,12 +230,20 @@ async function applyState(state, force = false) {
   }
 
   if (state === 4) {
+    clearDoorbellRecoveryTimer();
     await Promise.all([
       stopAudio(audioFiles.kill, 100),
       startAudio(audioFiles.will, TRACK_VOLUME, 0, false),
     ]);
 
+    await fadeAudio(audioFiles.will, DUCKED_VOLUME, 150);
     await startAudio(audioFiles.doorbell, DOORBELL_VOLUME, 150, true);
+
+    doorbellRecoveryTimer = setTimeout(() => {
+      if (lastState === 4 && !audioFiles.will.paused) {
+        fadeAudio(audioFiles.will, TRACK_VOLUME, 600);
+      }
+    }, DOORBELL_DUCK_MS);
 
     lastState = state;
     return;

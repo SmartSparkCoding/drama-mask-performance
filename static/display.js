@@ -204,7 +204,18 @@ async function applyState(state, force = false) {
     return;
   }
 
-  if (state === 3 || state === 4) {
+  if (state === 3) {
+    await Promise.all([
+      stopAudio(audioFiles.kill, 100),
+      startAudio(audioFiles.will, TRACK_VOLUME, 0, false),
+      stopAudio(audioFiles.doorbell, 100),
+    ]);
+
+    lastState = state;
+    return;
+  }
+
+  if (state === 4) {
     await Promise.all([
       stopAudio(audioFiles.kill, 100),
       startAudio(audioFiles.will, TRACK_VOLUME, 0, false),
@@ -213,6 +224,7 @@ async function applyState(state, force = false) {
     await startAudio(audioFiles.doorbell, DOORBELL_VOLUME, 150, true);
 
     lastState = state;
+    return;
   }
 }
 

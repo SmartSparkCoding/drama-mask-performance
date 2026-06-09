@@ -14,21 +14,9 @@
       <p class="description">Back and forward cycle the shared display state. The B key advances forward.</p>
 
       <div class="button-row">
-        <form method="post" action="{{ url_for('control_prev') }}">
-          <button type="submit" class="control-button secondary">Back</button>
-        </form>
-
-        <form method="post" action="{{ url_for('control_next') }}" id="forward-form">
-          <button type="submit" class="control-button primary">Forward / B</button>
-        </form>
-
-        <form method="post" action="{{ url_for('control_reset') }}">
-          <button type="submit" class="control-button danger">Reset</button>
-        </form>
-
-        <form method="post" action="{{ url_for('control_reset') }}">
-          <button type="submit" class="control-button danger">Reset</button>
-        </form>
+        <button type="button" class="control-button secondary" id="back-button">Back</button>
+        <button type="button" class="control-button primary" id="forward-button">Forward / B</button>
+        <button type="button" class="control-button danger" id="reset-button">Reset</button>
       </div>
     </section>
   </main>

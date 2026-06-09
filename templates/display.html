@@ -14,5 +14,6 @@
       {% if image %}src="{{ url_for('static', filename='images/' + image) }}"{% else %}src=""{% endif %}
       alt="Current performance state"
     >
+    <button id="audio-unlock" class="audio-unlock" type="button">Enable audio</button>
   </main>
 {% endblock %}

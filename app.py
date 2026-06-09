@@ -100,7 +100,7 @@ def read_status() -> int:
     row = get_db().execute(
         "SELECT status FROM performance_state WHERE id = 1"
     ).fetchone()
-    return int(row["status"]) if row else 1
+    return int(row["status"]) if row else 0
 
 
 def write_status(status: int) -> int:
@@ -163,6 +163,14 @@ def control_next():
 @app.route("/control/prev", methods=["POST"])
 def control_prev():
     status = write_status(previous_status(read_status()))
+    if request.accept_mimetypes.best == "application/json":
+        return jsonify({"status": status, "image": STATE_TO_IMAGE[status]})
+    return redirect(url_for("control"))
+
+
+@app.route("/control/reset", methods=["POST"])
+def control_reset():
+    status = write_status(0)
     if request.accept_mimetypes.best == "application/json":
         return jsonify({"status": status, "image": STATE_TO_IMAGE[status]})
     return redirect(url_for("control"))

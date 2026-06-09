@@ -11,7 +11,7 @@
     <section class="control-panel">
       <p class="eyebrow">Performance control</p>
       <h1>State <span id="status-value">{{ status }}</span></h1>
-      <p class="description">Back and forward cycle the shared display state. Spacebar advances forward.</p>
+      <p class="description">Back and forward cycle the shared display state. The B key advances forward.</p>
 
       <div class="button-row">
         <form method="post" action="{{ url_for('control_prev') }}">
@@ -19,7 +19,15 @@
         </form>
 
         <form method="post" action="{{ url_for('control_next') }}" id="forward-form">
-          <button type="submit" class="control-button primary">Forward / Space</button>
+          <button type="submit" class="control-button primary">Forward / B</button>
+        </form>
+
+        <form method="post" action="{{ url_for('control_reset') }}">
+          <button type="submit" class="control-button danger">Reset</button>
+        </form>
+
+        <form method="post" action="{{ url_for('control_reset') }}">
+          <button type="submit" class="control-button danger">Reset</button>
         </form>
       </div>
     </section>

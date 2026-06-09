@@ -1,3 +1,8 @@
+const FADE_MS = 3000;
+const POLL_MS = 250;
+const TRACK_VOLUME = 1;
+const DOORBELL_VOLUME = 1.5;
+
 const STATE_TO_IMAGE = {
   0: null,
   1: null,
@@ -6,194 +11,212 @@ const STATE_TO_IMAGE = {
   4: 'wait.png',
 };
 
-const STATE_TO_AUDIO = {
-  0: { image: null, track: null },
-  1: { image: null, track: 'kill' },
-  2: { image: 'time.png', track: 'will' },
-  3: { image: 'wait.png', track: 'will' },
-  4: { image: 'wait.png', track: 'will', overlay: 'doorbell' },
+const AUDIO_URLS = {
+  kill: '/static/audio/kill.mp3',
+  will: '/static/audio/will.mp3',
+  doorbell: '/static/audio/doorbell.mp3',
 };
 
-const FADE_MS = 3000;
-const POLL_MS = 250;
+const audioFiles = {
+  kill: createAudio(AUDIO_URLS.kill, true),
+  will: createAudio(AUDIO_URLS.will, true),
+  doorbell: createAudio(AUDIO_URLS.doorbell, false),
+};
 
-class AudioTrack {
-  constructor(context, url, options = {}) {
-    this.context = context;
-    this.audio = new Audio(url);
-    this.audio.preload = 'auto';
-    this.audio.crossOrigin = 'anonymous';
-    this.source = context.createMediaElementSource(this.audio);
-    this.gain = context.createGain();
-    this.gain.gain.value = 0;
-    this.source.connect(this.gain).connect(context.destination);
-    this.targetVolume = options.targetVolume ?? 1;
-    this.loop = options.loop ?? true;
-    this.audio.loop = this.loop;
-    this._fader = null;
-  }
+let lastState = null;
+let audioUnlocked = false;
+let pendingState = 0;
 
-  async playAtVolume(volume, fadeMs = 0) {
-    this.audio.loop = this.loop;
-    if (this.audio.paused) {
-      this.audio.currentTime = 0;
-      await this.audio.play();
-    }
+function createAudio(url, loop) {
+  const audio = new Audio(url);
+  audio.preload = 'auto';
+  audio.loop = loop;
+  audio.volume = 0;
+  return audio;
+}
 
-    await this.fadeTo(volume, fadeMs);
-  }
+function getImage() {
+  return document.getElementById('display-image');
+}
 
-  async stop(fadeMs = 0) {
-    await this.fadeTo(0, fadeMs);
-    if (!this.audio.paused) {
-      this.audio.pause();
-    }
-  }
+function getUnlockButton() {
+  return document.getElementById('audio-unlock');
+}
 
-  async fadeTo(volume, fadeMs) {
-    if (this._fader) {
-      this._fader.abort();
-    }
-
-    const controller = new AbortController();
-    this._fader = controller;
-    const startVolume = this.gain.gain.value;
-    const targetVolume = Math.max(0, volume);
-
-    if (fadeMs <= 0) {
-      this.gain.gain.value = targetVolume;
-      return;
-    }
-
-    const startTime = performance.now();
-    return new Promise((resolve) => {
-      const tick = (now) => {
-        if (controller.signal.aborted) {
-          resolve();
-          return;
-        }
-
-        const elapsed = Math.min(1, (now - startTime) / fadeMs);
-        this.gain.gain.value = startVolume + (targetVolume - startVolume) * elapsed;
-        if (elapsed >= 1) {
-          resolve();
-          return;
-        }
-
-        requestAnimationFrame(tick);
-      };
-
-      requestAnimationFrame(tick);
-    });
+function showUnlockButton() {
+  const button = getUnlockButton();
+  if (button) {
+    button.classList.remove('is-hidden');
   }
 }
 
-class PerformanceAudioController {
-  constructor() {
-    this.context = null;
-    this.tracks = null;
-    this.unlocked = false;
-    this.lastState = null;
+function hideUnlockButton() {
+  const button = getUnlockButton();
+  if (button) {
+    button.classList.add('is-hidden');
+  }
+}
+
+async function primeAudio(audio) {
+  audio.muted = true;
+  try {
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
+    audio.volume = 0;
+    return true;
+  } catch (_error) {
+    audio.muted = false;
+    audio.volume = 0;
+    return false;
+  }
+}
+
+async function unlockAudio() {
+  const results = await Promise.all(Object.values(audioFiles).map(primeAudio));
+  if (results.every(Boolean)) {
+    audioUnlocked = true;
+    hideUnlockButton();
+    await applyState(pendingState, true);
+    return;
   }
 
-  async ensureReady() {
-    if (this.context) {
-      return;
-    }
+  showUnlockButton();
+}
 
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
-      return;
-    }
+async function ensureAudioUnlocked() {
+  if (audioUnlocked) {
+    return true;
+  }
 
-    this.context = new AudioContextClass();
-    this.tracks = {
-      kill: new AudioTrack(this.context, '/static/audio/kill.mp3', { loop: true }),
-      will: new AudioTrack(this.context, '/static/audio/will.mp3', { loop: true }),
-      doorbell: new AudioTrack(this.context, '/static/audio/doorbell.mp3', { loop: false, targetVolume: 1.5 }),
+  showUnlockButton();
+  return false;
+}
+
+async function fadeAudio(audio, targetVolume, durationMs) {
+  const startVolume = audio.volume;
+  const destination = Math.max(0, targetVolume);
+
+  if (durationMs <= 0) {
+    audio.volume = destination;
+    return;
+  }
+
+  const startTime = performance.now();
+  await new Promise((resolve) => {
+    const step = (now) => {
+      const elapsed = Math.min(1, (now - startTime) / durationMs);
+      audio.volume = startVolume + (destination - startVolume) * elapsed;
+      if (elapsed >= 1) {
+        resolve();
+        return;
+      }
+
+      requestAnimationFrame(step);
     };
+
+    requestAnimationFrame(step);
+  });
+}
+
+async function stopAudio(audio, durationMs = 0) {
+  if (audio.paused) {
+    audio.volume = 0;
+    return;
   }
 
-  async unlock() {
-    await this.ensureReady();
-    if (!this.context || this.unlocked) {
-      return;
-    }
+  await fadeAudio(audio, 0, durationMs);
+  audio.pause();
+  audio.currentTime = 0;
+}
 
-    try {
-      await this.context.resume();
-      this.unlocked = true;
-      const response = await fetch('/api/state', { cache: 'no-store' });
-      if (response.ok) {
-        const data = await response.json();
-        await this.applyState(data.status, true);
-      }
-    } catch (_error) {
-      // If autoplay is blocked, the browser will keep the tracks silent until it allows playback.
-    }
+async function startAudio(audio, targetVolume, fadeMs = 0, restart = false) {
+  if (restart || audio.paused) {
+    audio.currentTime = 0;
+    await audio.play();
   }
 
-  async applyState(state, force = false) {
-    await this.ensureReady();
+  await fadeAudio(audio, targetVolume, fadeMs);
+}
 
-    if (!this.context || !this.tracks) {
-      return;
-    }
+async function updateImage(state) {
+  const image = getImage();
+  if (!image) {
+    return;
+  }
 
-    const nextState = STATE_TO_AUDIO[state] || STATE_TO_AUDIO[0];
-    const image = document.getElementById('display-image');
+  const nextImage = STATE_TO_IMAGE[state] || null;
+  if (!nextImage) {
+    image.classList.add('is-hidden');
+    image.removeAttribute('src');
+    image.dataset.currentSource = '';
+    return;
+  }
 
-    if (image) {
-      if (nextState.image) {
-        const nextSource = `/static/images/${nextState.image}`;
-        image.classList.remove('is-hidden');
-        if (image.dataset.currentSource !== nextSource) {
-          image.dataset.currentSource = nextSource;
-          image.src = nextSource;
-        }
-      } else {
-        image.classList.add('is-hidden');
-        image.removeAttribute('src');
-        image.dataset.currentSource = '';
-      }
-    }
-
-    if (!force && state === this.lastState) {
-      return;
-    }
-
-    try {
-      if (nextState.track === 'kill') {
-        await Promise.all([
-          this.tracks.will.stop(FADE_MS),
-          this.tracks.doorbell.stop(200),
-          this.tracks.kill.playAtVolume(1, FADE_MS),
-        ]);
-      } else if (nextState.track === 'will') {
-        await Promise.all([
-          this.tracks.kill.stop(FADE_MS),
-          this.tracks.will.playAtVolume(1, FADE_MS),
-        ]);
-      } else {
-        await this.tracks.kill.stop(500);
-        await this.tracks.will.stop(500);
-        await this.tracks.doorbell.stop(250);
-      }
-
-      if (nextState.overlay === 'doorbell') {
-        await this.tracks.doorbell.playAtVolume(1.5, 150);
-      }
-
-      this.lastState = state;
-    } catch (_error) {
-      this.lastState = null;
-    }
+  const nextSource = `/static/images/${nextImage}`;
+  image.classList.remove('is-hidden');
+  if (image.dataset.currentSource !== nextSource) {
+    image.dataset.currentSource = nextSource;
+    image.src = nextSource;
   }
 }
 
-const audioController = new PerformanceAudioController();
+async function applyState(state, force = false) {
+  pendingState = state;
+  await updateImage(state);
 
-async function refreshDisplay() {
+  if (!await ensureAudioUnlocked()) {
+    return;
+  }
+
+  if (!force && state === lastState) {
+    return;
+  }
+
+  if (state === 0) {
+    await Promise.all([
+      stopAudio(audioFiles.kill, 150),
+      stopAudio(audioFiles.will, 150),
+      stopAudio(audioFiles.doorbell, 150),
+    ]);
+    lastState = state;
+    return;
+  }
+
+  if (state === 1) {
+    await Promise.all([
+      stopAudio(audioFiles.will, 50),
+      stopAudio(audioFiles.doorbell, 50),
+      startAudio(audioFiles.kill, TRACK_VOLUME, 0, true),
+    ]);
+    lastState = state;
+    return;
+  }
+
+  if (state === 2) {
+    await Promise.all([
+      stopAudio(audioFiles.kill, FADE_MS),
+      startAudio(audioFiles.will, TRACK_VOLUME, FADE_MS, true),
+      stopAudio(audioFiles.doorbell, 100),
+    ]);
+    lastState = state;
+    return;
+  }
+
+  if (state === 3 || state === 4) {
+    await Promise.all([
+      stopAudio(audioFiles.kill, 100),
+      startAudio(audioFiles.will, TRACK_VOLUME, 0, false),
+    ]);
+
+    await startAudio(audioFiles.doorbell, DOORBELL_VOLUME, 150, true);
+
+    lastState = state;
+  }
+}
+
+async function refreshState() {
   try {
     const response = await fetch('/api/state', { cache: 'no-store' });
     if (!response.ok) {
@@ -201,14 +224,18 @@ async function refreshDisplay() {
     }
 
     const data = await response.json();
-    await audioController.applyState(data.status);
+    await applyState(data.status);
   } catch (_error) {
-    // Keep the display stable if the control server is briefly unavailable.
+    // Leave the current scene alone if the state API is temporarily unavailable.
   }
 }
 
-document.addEventListener('pointerdown', () => audioController.unlock(), { once: true });
-document.addEventListener('keydown', () => audioController.unlock(), { once: true });
+document.addEventListener('DOMContentLoaded', () => {
+  const unlockButton = getUnlockButton();
+  if (unlockButton) {
+    unlockButton.addEventListener('click', unlockAudio);
+  }
 
-refreshDisplay();
-setInterval(refreshDisplay, POLL_MS);
+  refreshState();
+  setInterval(refreshState, POLL_MS);
+});

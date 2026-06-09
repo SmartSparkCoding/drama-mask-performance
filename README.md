@@ -5,12 +5,13 @@ This project is a small Flask app for a performance display. The root route `/` 
 ## What It Does
 
 - Status `0` shows no image and no audio.
-- Status `1` shows no image and fades in `static/audio/kill.mp3` over 3 seconds.
+- Status `1` shows no image and starts `static/audio/kill.mp3` immediately.
 - Status `2` shows `static/images/time.png`, fades out `kill.mp3`, and fades in `static/audio/will.mp3`.
-- Status `3` shows `static/images/wait.png` and keeps `will.mp3` playing.
-- Status `4` shows `static/images/wait.png`, keeps `will.mp3` in the background, and plays `static/audio/doorbell.mp3` on top at 150% volume.
-- `/control` provides Back and Forward buttons.
-- Pressing the space bar on `/control` triggers Forward.
+- Status `3` shows `static/images/wait.png`, keeps `will.mp3` playing in the background, and plays `static/audio/doorbell.mp3` on top at 150% volume.
+- Status `4` behaves the same as status `3`.
+- `/control` provides Back, Forward, and Reset buttons.
+- Pressing the `b` key on `/control` triggers Forward.
+- The display page includes a one-click audio unlock button if the browser blocks autoplay.
 - The app creates its SQLite database automatically when you start it with `python3 app.py`.
 
 ## Setup
@@ -50,7 +51,7 @@ Open these pages in your browser:
 - `static/audio/` should contain `kill.mp3`, `will.mp3`, and `doorbell.mp3`.
 - `templates/` contains the HTML for the two routes.
 - `static/display.js` keeps the main screen in sync with the database.
-- `static/control.js` maps the space bar to the Forward action.
+- `static/control.js` maps the `b` key to the Forward action.
 
 ## Audio Files
 
@@ -60,4 +61,4 @@ Place these files in `static/audio/`:
 - `will.mp3`
 - `doorbell.mp3`
 
-The browser client will fade and layer them according to the active status.
+The browser client will fade and layer them according to the active status. If audio does not start automatically, click the `Enable audio` button on the display page once.

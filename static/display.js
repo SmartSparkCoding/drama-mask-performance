@@ -41,6 +41,7 @@ function createAudio(url, loop) {
   const audio = new Audio(url);
   audio.preload = 'auto';
   audio.loop = loop;
+  audio.playsInline = true;
   audio.volume = 0;
   return audio;
 }
@@ -70,6 +71,7 @@ function hideUnlockButton() {
 async function primeAudio(audio) {
   audio.muted = true;
   try {
+    audio.load();
     await audio.play();
     audio.pause();
     audio.currentTime = 0;
@@ -84,11 +86,18 @@ async function primeAudio(audio) {
 }
 
 async function unlockAudio() {
-  const results = await Promise.all(Object.values(audioFiles).map(primeAudio));
-  if (results.every(Boolean)) {
+  let unlockedCount = 0;
+
+  for (const audio of Object.values(audioFiles)) {
+    if (await primeAudio(audio)) {
+      unlockedCount += 1;
+    }
+  }
+
+  if (unlockedCount > 0) {
     audioUnlocked = true;
     hideUnlockButton();
-    await applyState(pendingState, true);
+    await refreshState();
     return;
   }
 
